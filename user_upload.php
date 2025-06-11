@@ -4,6 +4,21 @@ $options = getopt("", ["file:", "create_table", "dry_run", "help", "u:", "p:", "
 
 if (isset($options['help'])) {
     echo <<<EOD
+Usage: php user_upload.php [OPTIONS]
+
+--file [csv file name] - This is the name of the CSV to be parsed.
+--create_table - This will create or rebuild the 'users' table in the database.
+--dry_run - This will be used with the --file directive in case we want to run the script but not insert
+into the DB. All other functions will be executed, but the database won't be altered
+-u - MySQL username
+-p - MySQL password
+-h - MySQL host.
+--help - which will output the above list of directives with details.
+
+Examples:
+php user_upload.php -help
+php user_upload.php -create_table -u user -p password -h localhost --dry_run
+
 EOD;
     exit;
 }
