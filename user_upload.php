@@ -59,3 +59,55 @@ if (isset($options['create_table'])) {
     create_table($mysqli);
     exit;
 }
+
+if (isset($options['file'])) {
+    $filename = $options['file'];
+    if (!file_exists($filename)) {
+        echo "File '$filename' not found.\n";
+        exit(1);
+    }
+
+    $dryRun = isset($options['dry_run']);
+    $mysqli = null;
+
+    if (!$dryRun && isset($options['u'], $options['p'], $options['h'])) {
+        $mysqli = connect_db($options['h'], $options['u'], $options['p']);
+    }
+
+    $handle = fopen($filename, "r");
+    if ($handle === false) {
+        die("Unable to open file.\n");
+    }
+
+    $rowCount = 0;
+    $invalidCount = 0;
+    fgetcsv($handle); // Skip header
+
+    while (($data = fgetcsv($handle)) !== false) {
+        [$name, $surname, $email] = $data;
+
+        $name = ucfirst(strtolower($name));
+        $surname = ucfirst(strtolower($surname));
+        $email = strtolower(trim($email));
+
+        if (!validate_email($email)) {
+            echo "Invalid email: $email\n";
+            $invalidCount++;
+            continue;
+        }
+
+        echo "Valid row: $name $surname <$email>\n";
+        $rowCount++;
+
+        if (!$dryRun && $mysqli) {
+            $stmt = $mysqli->prepare("INSERT INTO users (name, surname, email) VALUES (?, ?, ?)");
+            $stmt->bind_param("sss", $name, $surname, $email);
+            if (!$stmt->execute()) {
+                echo "Failed to insert: {$mysqli->error}\n";
+            }
+        }
+    }
+
+    fclose($handle);
+    echo "Processed $rowCount valid rows. $invalidCount invalid emails skipped.\n";
+}
