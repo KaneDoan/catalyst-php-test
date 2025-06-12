@@ -1,8 +1,8 @@
 # Catalyst PHP Technical Test
 
-<h1>Test 1:</h1> 
+<h1>Test 1: Script Task</h1> 
 
-<p>This is a command-line PHP script developed for Catalyst's technical test. It processes a CSV file of user data, validates and formats the information, and imports it into a MySQL or MariaDB database</p>
+<p>PHP script execute from the command line to processes a CSV file of user data, validates and formats the information, and imports it into a MySQL or MariaDB database</p>
 
 ## Functions
 
@@ -14,12 +14,23 @@
 - Handles duplicate emails gracefully (skips, doesn't crash)
 - Supports a dry run mode (validates without inserting)
 
-## 📦 Requirements
+<h1>Test 2: Logic Test</h1> 
+
+<p>PHP script execute from the command line to processes Output the numbers from 1 to 100
+- Where the number is divisible by three (3) output the word “foo”.
+- Where the number is divisible by five (5) output the word “bar”
+- Where the number is divisible by three (3) and (5) output the word “foobar”</p>
+
+## Functions
+
+- Save as listed above.
+
+## Requirements
 
 - PHP 8.1+  
-- MySQL 8.0+
+- MySQL 8.0+ or MariaDB 11.x. I used MySQL 8.1.
 - PHP `mysqli` extension  
-- I ran this on Linux environment (e.g., Ubuntu 24.04)
+- A Linux environment (e.g., Ubuntu 24.04).
 
 Install dependencies on Ubuntu:
 
