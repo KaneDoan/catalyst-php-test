@@ -1,6 +1,7 @@
 <?php
 
-$options = getopt("", ["file:", "create_table", "dry_run", "help", "u:", "p:", "h:"]);
+define('DEFAULT_DB_NAME', 'test');
+$options = getopt("u:p:h:", ["file:", "create_table", "dry_run", "help"]);
 
 if (isset($options['help'])) {
     echo <<<EOD
@@ -35,6 +36,21 @@ function connect_db($host, $user, $pass) {
     return $mysqli;
 }
 
+//Ensure the database exists, create it if it doesn't
+function ensure_database_exists($host, $user, $pass, $dbname) {
+    $conn = new mysqli($host, $user, $pass);
+    if ($conn->connect_error) {
+        die("Connection failed: " . $conn->connect_error);
+    }
+
+    // Create DB if it doesn't exist
+    if (!$conn->query("CREATE DATABASE IF NOT EXISTS `$dbname`")) {
+        die("Database creation failed: " . $conn->error);
+    }
+
+    $conn->close();
+}
+
 function create_table($mysqli) {
     $mysqli->query("DROP TABLE IF EXISTS users");
     $create = "CREATE TABLE users (
@@ -50,12 +66,16 @@ function create_table($mysqli) {
     }
 }
 
+// Get DB name or default
+$dbname = $options['db'] ?? DEFAULT_DB_NAME;
+
 if (isset($options['create_table'])) {
     if (!isset($options['u'], $options['p'], $options['h'])) {
         echo "MySQL credentials missing.\n";
         exit(1);
     }
-    $mysqli = connect_db($options['h'], $options['u'], $options['p']);
+    ensure_database_exists($options['h'], $options['u'], $options['p'], $dbname);
+    $mysqli = connect_db($options['h'], $options['u'], $options['p'], $dbname);
     create_table($mysqli);
     exit;
 }
@@ -71,7 +91,8 @@ if (isset($options['file'])) {
     $mysqli = null;
 
     if (!$dryRun && isset($options['u'], $options['p'], $options['h'])) {
-        $mysqli = connect_db($options['h'], $options['u'], $options['p']);
+        ensure_database_exists($options['h'], $options['u'], $options['p'], $dbname);
+        $mysqli = connect_db($options['h'], $options['u'], $options['p'], $dbname);
     }
 
     $handle = fopen($filename, "r");
@@ -81,6 +102,7 @@ if (isset($options['file'])) {
 
     $rowCount = 0;
     $invalidCount = 0;
+    $duplicateCount = 0;
     fgetcsv($handle); // Skip header
 
     while (($data = fgetcsv($handle)) !== false) {
@@ -102,12 +124,20 @@ if (isset($options['file'])) {
         if (!$dryRun && $mysqli) {
             $stmt = $mysqli->prepare("INSERT INTO users (name, surname, email) VALUES (?, ?, ?)");
             $stmt->bind_param("sss", $name, $surname, $email);
-            if (!$stmt->execute()) {
-                echo "Failed to insert: {$mysqli->error}\n";
+            try {
+                $stmt->execute();
+            } catch (mysqli_sql_exception $e) {
+                if (str_contains($e->getMessage(), 'Duplicate entry')) {
+                    echo "Skipped duplicate email: $email\n";
+                    $duplicateCount++;
+                } else {
+                    echo "Failed to insert: {$e->getMessage()}\n";
+                }
             }
         }
     }
-
     fclose($handle);
-    echo "Processed $rowCount valid rows. $invalidCount invalid emails skipped.\n";
+    echo "Processed $rowCount valid rows.\n";
+    echo "Processed $invalidCount invalid emails skipped.\n";
+    echo "Processed $duplicateCount duplicate emails skipped.\n";
 }
